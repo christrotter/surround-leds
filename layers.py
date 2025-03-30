@@ -61,6 +61,42 @@ class IndicatorLEDs:
             self.pulse_state -= 2 * np.pi
         return
 
+    def alternating_yellow_black(self, fade_time=2):
+        """
+        Alternating yellow and black theme with a fade effect.
+        Swaps yellow and black every `fade_time` seconds.
+        """
+        now = time.monotonic()
+        # Check if it's time to swap
+        if now - self.last_update_time > fade_time:
+            self.last_update_time = now
+            # Swap the colors
+            self.background_sparkle = np.where(
+                self.background_sparkle == config.YELLOW,
+                (0, 0, 0),  # Black (off)
+                config.YELLOW
+            )
+
+        # Apply the fade effect
+        self.leds_numpy = np.clip(
+            self.leds_numpy + (self.background_sparkle - self.leds_numpy) * 0.1, 0, 255
+        )
+
+        # Write the updated array to the actual LEDs
+        self.leds[:] = self.leds_numpy.tolist()
+
+    def startup_sequence(self, color, fade_time):
+        # we want to fade the LEDs in to full brightness then out to black
+        self.leds_numpy[0:self.led_count-1] = color
+        self.leds[:] = self.leds_numpy.tolist()
+        self.show()
+        for i in range(int(fade_time * 1000)):
+            # set the brightness of the LEDs
+            self.leds.brightness = (fade_time * 500 - i) / (fade_time * 1000)
+            # show the LEDs
+            self.leds.show()
+        return self.leds
+
     def set_layer_background(self, color):
         self.sparkle_colour(color, (0, self.led_count-1))
         self.leds[:] = self.leds_numpy.tolist()
