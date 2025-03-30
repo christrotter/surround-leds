@@ -1,15 +1,20 @@
 import board
-
+    
+# hardware setup
 led_pin = board.IO3
+
+# main class config
+loop_freq = 0.01
+update_freq = 0.01
+fade_rgb_values = (-1, -1, -1)  # fade down the working numpy array by rgb (n,n,n) values
 
 right_indicator_range = (8, 84)
 top_indicator_range = (120, 220)
 left_indicator_range = (252, 330)
-pedals_indicator_range = (350, 450)
+pedals_indicator_range = (450, 470)
+pedals_range_length = pedals_indicator_range[1] - pedals_indicator_range[0] + 1
 
-loop_freq = 1
-update_freq = 1
-fade_rgb_values = (-1, -1, -1)  # fade down the working numpy array by rgb (n,n,n) values
+# effects config
 
 fade_time = 0.15
 led_brightness = 0.2
@@ -23,6 +28,9 @@ CYAN = (0, 255, 255)
 BLUE = (0, 0, 255)
 PURPLE = (180, 0, 255)
 CYCLE_TIME = 0.0001
+
+# specific colours
+weather_colour = YELLOW
 
 fire_color_red = 0xff5500
 fire_color_blue = 0x2299ff

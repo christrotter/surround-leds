@@ -4,59 +4,108 @@ from ulab import numpy as np
 
 # a little class to help us do a fire simulation
 class IndicatorLEDs:
-    def __init__(self,leds, loop_freq=config.loop_freq, update_freq=config.update_freq, fade_rgb_values=config.fade_rgb_values):
+    def __init__(self, leds, loop_freq=config.loop_freq, update_freq=config.update_freq, fade_rgb_values=config.fade_rgb_values):
         self.leds = leds
         self.led_count = len(leds)
 
         # the numpy array is our temp array to mess with led values
         self.leds_numpy = np.array( leds, dtype=np.int16)  # gets length from 'leds'
 
-        self.fade_rgb_values = np.array( fade_rgb_values, dtype=np.int16 )
+        self.fade_rgb_values = np.array( (fade_rgb_values), dtype=np.int16 )
         self.last_time = time.monotonic()
         self.loop_freq = loop_freq
         self.last_update_time = self.last_time
         self.update_freq = update_freq
         self.snek_rate = 1
         self.brightness_scaler = 0.001
-    
-
-    def set_layer_background(self, color):
-        for i in range(self.led_count):
-            self.leds_numpy[i] = color
-        self.leds[:] = self.leds_numpy.tolist()
-        return
-    
-    def set_layer_top_indicator(self, color):
-        for i in range(config.top_indicator_range[0], config.top_indicator_range[1]):
-            self.leds_numpy[i] = color
-        self.leds[:] = self.leds_numpy.tolist()
-        return    
-    
-    def set_layer_right_indicator(self, color):
-        for i in range(config.right_indicator_range[0], config.right_indicator_range[1]):
-            self.leds_numpy[i] = color
-        self.leds[:] = self.leds_numpy.tolist()
-        return
-    
-    def set_layer_left_indicator(self, color):
-        for i in range(config.left_indicator_range[0], config.left_indicator_range[1]):
-            self.leds_numpy[i] = color
-        self.leds[:] = self.leds_numpy.tolist()
-        return
-    
-    def set_layer_pedals(self, color):
-        for i in range(config.pedals_indicator_range[0], config.pedals_indicator_range[1]):
-            self.leds_numpy[i] = color
-        self.leds[:] = self.leds_numpy.tolist()
-        return
+        self.background_sparkle = np.array( leds, dtype=np.int16 )
+        self.pulse_state = 1
+        self.top_pulse_state = 1
     
     def time_to_update(self):
-        # check if we are ready to update
+        """
+        Check if it's time to update the LEDs based on the loop frequency.
+        The purpose of this is to limit CPU usage.
+        :return: True if it's time to update, False otherwise.
+        """
         now = time.monotonic()
         if now - self.last_time > self.loop_freq:
             self.last_time = now
             return True
         return False
+
+    def sparkle_colour(self, color, led_range, update_num=15):
+        self.leds_numpy += self.fade_rgb_values
+        self.leds_numpy = np.clip(self.leds_numpy, 0,255)
+        for i in range(update_num):
+            self.leds_numpy[ random.randint(led_range[0],led_range[1]) ] = color
+        return
+    
+    def pulse_colour(self, start_range, end_range, color, pulse_speed, pulse_min_percent):
+        # we want to take an rgb value and pulse it - thanks, copilot
+        # Calculate the pulse intensity using a sine wave - copilot killing it here
+        pulse_intensity = (np.sin(self.pulse_state) + 1) / 4 + pulse_min_percent
+        
+        # Scale the color by the pulse intensity
+        # pulsed_color = tuple(int(c * pulse_intensity) for c in color)
+        pulsed_color = np.array(color) * pulse_intensity
+        
+        # Update the LEDs with the pulsed color
+        # for i in range(start_range, end_range):
+        #     self.leds_numpy[i] = pulsed_color
+        self.leds_numpy[start_range:end_range] = pulsed_color #.astype(np.int16)
+        
+        # Increment the pulse state for the next update
+        self.pulse_state += pulse_speed  # Adjust this value to control the pulse speed
+        if self.pulse_state > 2 * np.pi:
+            self.pulse_state -= 2 * np.pi
+        return
+
+    def set_layer_background(self, color):
+        self.sparkle_colour(color, (0, self.led_count-1))
+        self.leds[:] = self.leds_numpy.tolist()
+        return
+    
+    def set_layer_top_indicator(self, color):
+        # this is the zoom/meet state, maybe
+        for i in range(config.top_indicator_range[0], config.top_indicator_range[1]):
+            # self.leds_numpy[i] = color
+            self.pulse_colour(config.top_indicator_range[0], config.top_indicator_range[1], color, 0.001, 0.15)
+        self.leds[:] = self.leds_numpy.tolist()
+        return    
+    
+    def set_layer_right_indicator(self, color):
+        self.leds_numpy[config.right_indicator_range[0]:config.right_indicator_range[1]] = color
+        # for i in range(config.right_indicator_range[0], config.right_indicator_range[1]):
+        #     self.leds_numpy[i] = color
+        self.leds[:] = self.leds_numpy.tolist()
+        return
+    
+    def set_layer_left_indicator(self, color):
+        self.leds_numpy[config.left_indicator_range[0]:config.left_indicator_range[1]] = color
+        # for i in range(config.left_indicator_range[0], config.left_indicator_range[1]):
+        #     self.leds_numpy[i] = color
+        self.leds[:] = self.leds_numpy.tolist()
+        return
+    
+    def set_layer_pedals(self, color):
+        """
+        The pedals state will flow in and update this.
+        """
+        for i in range(config.pedals_range_length):
+            self.pulse_colour(
+                config.pedals_indicator_range[0], 
+                config.pedals_indicator_range[1], 
+                color, 
+                0.001, 
+                0.15
+            )
+        self.leds[:] = self.leds_numpy.tolist()
+        return
+
+
+
+
 
     # call "update()" as fast as you want
     def fire_update(self, new_color, update_num):
