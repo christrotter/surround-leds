@@ -16,7 +16,7 @@ pedals_range_length = pedals_indicator_range[1] - pedals_indicator_range[0] + 1
 
 # effects config
 
-fade_time = 0.15
+fade_time = 0.25
 led_brightness = 0.2
 num_leds = 470 * 1
 
